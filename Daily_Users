@@ -1,0 +1,49 @@
+-- Build a temporary table - users
+WITH users AS (
+  SELECT
+    "from",
+    DATE_TRUNC('day', evt_block_time) AS evt_block_time
+  FROM definer_ethereum."FIN_evt_Transfer"
+),
+
+-- Build a temporary table - total_users
+total_users AS (
+SELECT
+  COUNT(DISTINCT "from") AS total_user,
+  evt_block_time
+FROM users
+GROUP BY
+  evt_block_time
+  ),
+
+-- Build a temporary table - new_users
+new_users AS(
+ select 
+"from",
+min(evt_block_time) as first_time
+from users
+group by "from"),
+
+-- Build a temporary table - new_user_numbers
+new_user_num AS(
+select
+count("from") as new_user,
+first_time
+from new_users
+group by first_time)
+
+-- This is main query
+
+SELECT
+    evt_block_time,      
+    case when new_user is NULL then 0
+    else new_user
+    end as new_user,
+    case when total_user - new_user is NULL then total_user
+    else total_user - new_user
+    end as old_user,
+    total_user
+FROM total_users
+LEFT JOIN new_user_num
+    ON evt_block_time = first_time
+order by 1
