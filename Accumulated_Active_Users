@@ -1,0 +1,25 @@
+-- Build a temp subquery
+WITH users AS (
+  SELECT
+    "from",
+    DATE_TRUNC('day', evt_block_time) AS evt_block_time
+  FROM definer_ethereum.FIN_evt_Transfer
+), 
+
+total_users AS (
+  SELECT
+    COUNT(DISTINCT (
+      "from"
+    )) AS total_user,
+    evt_block_time
+  FROM users
+  GROUP BY
+    evt_block_time
+)
+
+-- Main query
+SELECT
+  evt_block_time,
+  total_user,
+  SUM(total_user) OVER (ORDER BY evt_block_time) AS cumulative_total
+FROM total_users
