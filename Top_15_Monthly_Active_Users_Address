@@ -1,0 +1,19 @@
+-- Build a temp subquery
+WITH cte AS (
+SELECT
+  DATE_TRUNC('day', evt_block_time) AS evt_block_time,
+  "from"
+FROM definer_ethereum.FIN_evt_Transfer
+WHERE
+  DATE(evt_block_time) > DATE(CURRENT_TIMESTAMP) - INTERVAL '30' day
+ORDER BY
+  evt_block_time
+  )
+
+-- main query
+SELECT "from",
+        COUNT(*) AS num_of_transaction
+FROM cte
+GROUP BY "from"
+ORDER BY num_of_transaction DESC
+LIMIT 15
