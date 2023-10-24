@@ -1,0 +1,17 @@
+WITH cte AS (
+SELECT
+DATE_TRUNC('day', evt_block_time) AS evt_block_time,
+  COUNT(*) AS transaction
+FROM definer_ethereum.FIN_evt_Transfer
+GROUP BY
+  DATE_TRUNC('day', evt_block_time) 
+ )
+ 
+SELECT 
+    evt_block_time,
+    transaction,
+    SUM(transaction) OVER (
+    ORDER BY
+    evt_block_time) AS accumulative_transcation
+FROM cte
+ORDER BY evt_block_time
