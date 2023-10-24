@@ -1,0 +1,54 @@
+WITH users AS(
+    SELECT "from",
+    DATE_TRUNC('day', evt_block_time) AS evt_block_time
+    FROM definer_ethereum.FIN_evt_Transfer
+    ),
+
+total_users AS (
+    SELECT
+    COUNT(DISTINCT("from")) AS total_user,
+    evt_block_time
+    FROM users
+    GROUP BY evt_block_time
+    ),
+    
+new_users AS (
+    SELECT "from",
+    MIN(evt_block_time) AS first_time
+    FROM users
+    GROUP BY "from"
+    ),
+    
+new_user_num AS (
+    SELECT 
+    COUNT("from") AS new_user,
+    first_time
+    FROM new_users
+    GROUP BY first_time
+    ),
+
+cte AS (
+    SELECT evt_block_time,
+    CASE
+        WHEN new_user IS NULL THEN 0
+        ELSE new_user
+    END AS new_user,
+    CASE
+        WHEN total_user - new_user IS NULL THEN total_user
+        ELSE total_user - new_user
+    END AS old_user,
+        total_user
+    FROM total_users
+        LEFT JOIN new_user_num 
+            ON evt_block_time = first_time
+    )
+    
+-- Main query    
+SELECT
+    DATE_TRUNC('week', evt_block_time) AS evt_block_time,
+    SUM(new_user) AS new_user,
+    SUM(old_user) AS old_user,
+    SUM(total_user) AS total_user
+FROM cte
+GROUP BY 
+    DATE_TRUNC('week', evt_block_time)
