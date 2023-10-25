@@ -1,0 +1,297 @@
+This SQL query is designed to track the daily balance of the $FIN token on three different exchanges: Ascendex, Gateio, and MXC. 
+
+-- The first part of the query creates three subqueries (Ascendex, Gateio, MXC) that select the daily amount of $FIN tokens transferred to and from specific addresses associated with each exchange. The amount of tokens is converted from the smallest unit (wei) to ether by dividing by 10^18.
+WITH
+  Ascendex AS (
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS ascendex_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "to" IN (
+        SELECT
+          "from" AS customer_address_asx
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "to" = 0x4240781a9ebdb2eb14a183466e8820978b7da4e2
+          OR "to" = 0x4b1a99467a284cc690e3237bc69105956816f762
+      )
+    UNION ALL
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS ascendex_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "from" = 0x4240781a9ebdb2eb14a183466e8820978b7da4e2
+      OR "from" = 0x4b1a99467a284cc690e3237bc69105956816f762
+    UNION ALL
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS ascendex_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "from" IN (
+        SELECT
+          "from" AS customer_address_asx
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "to" = 0x4240781a9ebdb2eb14a183466e8820978b7da4e2
+          OR "to" = 0x4b1a99467a284cc690e3237bc69105956816f762
+      )
+      AND "to" IN (
+        SELECT DISTINCT
+          "to"
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "from" IN (
+            SELECT
+              "from" AS customer_address_asx
+            FROM
+              definer_ethereum.FIN_evt_Transfer
+            WHERE
+              "to" = 0x4240781a9ebdb2eb14a183466e8820978b7da4e2
+              OR "to" = 0x4b1a99467a284cc690e3237bc69105956816f762
+          )
+          AND NOT "to" IN (
+            0x4240781a9ebdb2eb14a183466e8820978b7da4e2,
+            0x4b1a99467a284cc690e3237bc69105956816f762
+          )
+      )
+  ),
+
+  gateio AS (
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS gateio_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "to" IN (
+        SELECT
+          "from" AS customer_address
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "to" = 0x0d0707963952f2fba59dd06f2b425ace40b492fe
+          OR "to" = 0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c
+      )
+    UNION ALL
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS gateio_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "from" = 0x0d0707963952f2fba59dd06f2b425ace40b492fe
+      OR "from" = 0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c
+    UNION ALL
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS gateio_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "from" IN (
+        SELECT
+          "from" AS customer_address
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "to" = 0x0d0707963952f2fba59dd06f2b425ace40b492fe
+          OR "to" = 0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c
+      )
+      AND "to" IN (
+        SELECT DISTINCT
+          "to"
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "from" IN (
+            SELECT
+              "from" AS customer_address
+            FROM
+              definer_ethereum.FIN_evt_Transfer
+            WHERE
+              "to" = 0x0d0707963952f2fba59dd06f2b425ace40b492fe
+              OR "to" = 0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c
+          )
+          AND NOT "to" IN (
+            0x0d0707963952f2fba59dd06f2b425ace40b492fe,
+            0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c
+          )
+      )
+  ),
+
+  mxc AS (
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS mxc_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "to" IN (
+        SELECT
+          "from" AS customer_address_mxc
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "to" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88
+      )
+    UNION ALL
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS mxc_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "from" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88
+    UNION ALL
+    SELECT
+      DATE_TRUNC('day', evt_block_time) AS dt,
+      "value" / CAST((POWER(10, 18)) AS DOUBLE) AS mxc_amt
+    FROM
+      definer_ethereum.FIN_evt_Transfer
+    WHERE
+      "from" IN (
+        SELECT
+          "from" AS customer_address_mxc
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "to" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88
+      )
+      AND "to" IN (
+        SELECT DISTINCT
+          "to"
+        FROM
+          definer_ethereum.FIN_evt_Transfer
+        WHERE
+          "from" IN (
+            SELECT
+              "from" AS customer_address_mxc
+            FROM
+              definer_ethereum.FIN_evt_Transfer
+            WHERE
+              "to" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88
+          )
+          AND NOT "to" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88
+      )
+  ),
+
+-- The next part of the query (a_daily, g_daily, m_daily) aggregates the daily amounts from each exchange into total daily amounts.
+  a_daily AS (
+    SELECT
+      dt,
+      SUM(ascendex_amt) AS daily_ascendex_amt
+    FROM
+      Ascendex
+    GROUP BY
+      dt
+  ),
+
+  g_daily AS (
+    SELECT
+      dt,
+      SUM(gateio_amt) AS daily_gateio_amt
+    FROM
+      gateio
+    GROUP BY
+      dt
+  ),
+
+  m_daily AS (
+    SELECT
+      dt,
+      SUM(mxc_amt) AS daily_mxc_amt
+    FROM
+      mxc
+    GROUP BY
+      dt
+  ),
+
+-- The 'new_dt' subquery creates a union of all dates from the three exchanges.
+  new_dt AS (
+    SELECT
+      dt
+    FROM
+      a_daily
+    UNION
+    SELECT
+      dt
+    FROM
+      g_daily
+    UNION
+    SELECT
+      dt
+    FROM
+      m_daily
+  ),
+
+-- The 'cte' subquery joins the daily amounts from each exchange with the 'new_dt' subquery, replacing any NULL values with 0.
+
+  cte AS (
+    SELECT
+      new_dt.dt,
+      CASE
+        WHEN daily_ascendex_amt IS NULL THEN 0
+        ELSE daily_ascendex_amt
+      END AS a_amt,
+      CASE
+        WHEN daily_gateio_amt IS NULL THEN 0
+        ELSE daily_gateio_amt
+      END AS g_amt,
+      CASE
+        WHEN daily_mxc_amt IS NULL THEN 0
+        ELSE daily_mxc_amt
+      END AS m_amt
+    FROM
+      new_dt
+      LEFT JOIN a_daily ON new_dt.dt = a_daily.dt
+      LEFT JOIN g_daily ON new_dt.dt = g_daily.dt
+      LEFT JOIN m_daily ON new_dt.dt = m_daily.dt
+    ORDER BY
+      new_dt.dt
+  ),
+
+-- The 'cte2' subquery calculates the cumulative balance of $FIN tokens on each exchange by summing the daily amounts up to each date.
+
+  cte2 AS (
+    SELECT
+      a.dt,
+      SUM(b.a_amt) AS a_balance,
+      SUM(b.g_amt) AS g_balance,
+      SUM(b.m_amt) AS m_balance
+    FROM
+      cte AS a
+      JOIN cte AS b ON a.dt >= b.dt
+    GROUP BY
+      a.dt
+    ORDER BY
+      a.dt
+  )
+
+-- main query
+-- The final part of the query selects the daily amounts, the cumulative balances, and the total balance across all three exchanges for each date. The results are ordered by date.
+
+SELECT
+  cte.dt,
+  a_amt,
+  a_balance,
+  g_amt,
+  g_balance,
+  m_amt,
+  m_balance,
+  a_balance + g_balance + m_balance AS total_balance
+FROM
+  cte
+  LEFT JOIN cte2 ON cte.dt = cte2.dt
+ORDER BY
+  dt
+
+In summary, this query provides a daily snapshot of the $FIN token balance on Ascendex, Gateio, and MXC exchanges.
