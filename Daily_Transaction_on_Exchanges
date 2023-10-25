@@ -1,0 +1,106 @@
+-- Build a temp subquery:This SQL query is designed to track the daily amount of a specific token (in this case, the $FTN token) transferred to and from specific addresses on three different exchanges: Ascendex, Gateio, and Mxc. 
+-- The first part of the query creates three separate subqueries (Ascendex, Gateio, and Mxc) that select the date and the amount of tokens transferred to or from specific addresses associated with each exchange. The amount of tokens is calculated by dividing the "value" field by 10 to the power of 18 (which is a common way to convert the raw blockchain "value" field into a more human-readable format).
+
+WITH 
+Ascendex AS (
+    SELECT 
+         DATE_TRUNC('day', evt_block_time) AS dt,
+         "value" / TRY_CAST((POWER(10, 18))AS DOUBLE) AS ascendex_amt
+    FROM definer_ethereum.FIN_evt_Transfer
+    WHERE 
+        "from" = 0x4240781a9ebdb2eb14a183466e8820978b7da4e2
+    OR "from" = 0x4b1a99467a284cc690e3237bc69105956816f762
+    UNION ALL
+    SELECT
+        DATE_TRUNC('day', evt_block_time) AS dt,
+        "value" / TRY_CAST((POWER(10, 18))AS DOUBLE) AS ascendex_amt
+    FROM definer_ethereum.FIN_evt_Transfer
+    WHERE 
+        "to" = 0x4240781a9ebdb2eb14a183466e8820978b7da4e2
+    OR "to" = 0x4b1a99467a284cc690e3237bc69105956816f762 ),
+
+Gateio AS (
+    SELECT
+    DATE_TRUNC('day', evt_block_time) AS dt,
+    "value" / TRY_CAST((POWER(10,18)) AS DOUBLE) AS gateio_amt
+    FROM definer_ethereum.FIN_evt_Transfer
+    WHERE "from" = 0x0d0707963952f2fba59dd06f2b425ace40b492fe
+    OR "from" = 0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c
+    UNION ALL
+    SELECT
+    DATE_TRUNC('day', evt_block_time) AS dt,
+    "value" / TRY_CAST((POWER(10,18)) AS DOUBLE) AS gateio_amt
+    FROM definer_ethereum.FIN_evt_Transfer
+    WHERE
+        "to" = 0x0d0707963952f2fba59dd06f2b425ace40b492fe
+        OR "to" = 0x1c4b70a3968436b9a0a9cf5205c787eb81bb558c ),
+        
+Mxc AS(
+    SELECT 
+    DATE_TRUNC('day', evt_block_time) AS dt,
+    "value" / TRY_CAST((POWER(10,18)) AS DOUBLE) AS mxc_amt
+    FROM definer_ethereum.FIN_evt_Transfer
+    WHERE
+    "from" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88
+    UNION ALL
+    SELECT 
+    DATE_TRUNC('day', evt_block_time) AS dt,
+    "value" / TRY_CAST((POWER(10,18)) AS DOUBLE) AS mxc_amt
+    FROM definer_ethereum.FIN_evt_Transfer
+    WHERE
+    "to" = 0x75e89d5979e4f6fba9f97c104c2f0afb3f1dcb88),
+
+-- The next part of the query creates three more subqueries (A_daily, G_daily, and M_daily) that group the results of the previous subqueries by date and calculate the total amount of tokens transferred on each date for each exchange.
+
+A_daily AS (
+        SELECT dt,
+        SUM(ascendex_amt) AS daily_ascendex_amt
+        FROM Ascendex
+        GROUP BY dt
+        ),
+        
+G_daily AS (
+        SELECT dt,
+        SUM(gateio_amt) AS daily_gateio_amt
+        FROM Gateio
+        GROUP BY dt
+        ),
+        
+M_daily AS (
+        SELECT dt,
+        SUM(mxc_amt) AS daily_mxc_amt
+        FROM Mxc
+        GROUP BY dt
+        ),
+
+-- The "new_dt" subquery creates a list of all dates that appear in the previous subqueries.
+
+new_dt AS (
+        SELECT dt
+        FROM A_daily
+        UNION
+        SELECT dt
+        FROM G_daily
+        UNION
+        SELECT dt
+        FROM M_daily
+        )
+
+-- main query
+-- The final part of the query selects the date and the total amount of tokens transferred on each date for each exchange from the "new_dt" subquery and the three "daily" subqueries. If there are no transfers on a specific date for a specific exchange, the query returns 0. The results are ordered by date.
+
+SELECT 
+    new_dt.dt,
+    CASE WHEN daily_ascendex_amt IS NULL THEN 0 ELSE daily_ascendex_amt END AS a_amt,
+    CASE WHEN daily_gateio_amt IS NULL THEN 0 ELSE daily_gateio_amt END AS g_amt,
+    CASE WHEN daily_mxc_amt IS NULL THEN 0 ELSE daily_mxc_amt END AS m_amt
+FROM new_dt
+LEFT JOIN A_daily
+    ON new_dt.dt = A_daily.dt
+LEFT JOIN G_daily
+    ON new_dt.dt = G_daily.dt
+LEFT JOIN M_daily
+    ON new_dt.dt = M_daily.dt
+ORDER BY new_dt.dt
+
+In summary, this query provides a daily breakdown of the amount of $FTN tokens transferred to and from specific addresses on the Ascendex, Gateio, and Mxc exchanges.
